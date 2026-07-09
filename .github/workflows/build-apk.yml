@@ -34,8 +34,8 @@ jobs:
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
-          sdkmanager --sdk_root="$HOME/android-sdk" "platforms;android-34" "build-tools;34.0.0"
           yes | sdkmanager --sdk_root="$HOME/android-sdk" --licenses
+          sdkmanager --sdk_root="$HOME/android-sdk" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Install deps & sync
         run: |
@@ -44,6 +44,7 @@ jobs:
 
       - name: Build Debug APK
         run: |
+          sed -i 's/\r$//' android/gradlew
           cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug --no-daemon
