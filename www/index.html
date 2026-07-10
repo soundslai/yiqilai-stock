@@ -561,6 +561,7 @@ function showDetail(code) {
     d.innerHTML = '<div class="mx"><h3 style="text-align:left">' + s.n + ' ' + s.c + '</h3>'
         + '<div style="font-size:18px;font-weight:700;margin:4px 0">' + (s.p ? s.p.toFixed(2) : "-") + ' <span style="font-size:12px;color:' + pCol(s.ch) + '">' + fmtPct(s.ch) + '</span></div>'
         + '<div style="font-size:10px;color:var(--t3);margin:4px 0">' + s.se + ' | 关注价 ' + s.z + ' | ⚠ ' + s.rk + '</div>'
+        + '<canvas id="vc"></canvas>'
         + '<canvas id="klc"></canvas>'
         + '<div style="padding:8px;background:var(--bg);border-radius:6px;font-size:11px;line-height:1.8">'
         + '<b>技术面</b> ' + techText + '<br>'
@@ -595,6 +596,46 @@ function showDetail(code) {
             if (data[di].v > maxV) maxV = data[di].v;
         }
         if (maxV === 0) maxV = 1;
+    // Draw volume bars on volume canvas
+    var vc = document.getElementById("vc");
+    if (vc) {
+        var vctx = vc.getContext("2d");
+        if (vctx) {
+            var vW = vc.parentElement.clientWidth - 20 || 320;
+            if (vW < 100) vW = 320;
+            var vH2 = 50;
+            vc.width = vW * 2;
+            vc.height = vH2 * 2;
+            vc.style.width = vW + "px";
+            vc.style.height = vH2 + "px";
+            vctx.scale(2, 2);
+            vctx.clearRect(0, 0, vW, vH2);
+            
+            var vData = genKL(s.p, 20);
+            var vMaxV = 0;
+            for (var vi = 0; vi < vData.length; vi++) {
+                if (vData[vi].v > vMaxV) vMaxV = vData[vi].v;
+            }
+            if (vMaxV === 0) vMaxV = 1;
+            
+            var vBarW = Math.min((vW - 10) / vData.length * 0.6, 8);
+            var vGap = (vW - 10) / vData.length;
+            vctx.font = "9px Arial";
+            vctx.fillStyle = "#999";
+            vctx.fillText("量", 2, 10);
+            
+            for (var vi = 0; vi < vData.length; vi++) {
+                var vd = vData[vi];
+                var vx = 10 + vGap * vi + vGap / 2;
+                var vIsUp = vd.c >= vd.o;
+                var vVol = (vd.v / vMaxV) * vH2 * 0.8;
+                vctx.fillStyle = vIsUp ? "rgba(229,57,53,0.6)" : "rgba(67,160,71,0.6)";
+                vctx.fillRect(vx - vBarW / 2, vH2 - vVol, vBarW, Math.max(1, vVol));
+            }
+        }
+    }
+    
+
         var rg = maxP - minP || 1;
         
         // Volume bars (top section)
@@ -772,7 +813,7 @@ function showDetail(code) {
     
     // Draw K-line
     setTimeout(function() {
-    var canvas = document.getElementById("kc");
+    var canvas = document.getElementById("klc");
     if (!canvas) return;
     var ctx = canvas.getContext("2d");
     if (!ctx) return;
