@@ -568,200 +568,133 @@ function showDetail(code) {
         + '<b>AI评分</b> <span style="color:var(--red);font-weight:700">' + Math.round(70 + Math.random() * 20) + "/100</span></div>"
         + '<div class="sa" style="margin-top:8px"><button class="bs bp" id="dtBtn">' + btnText + '</button></div></div>';
     
-    document.body.appendChild(d);
-    
-    // Draw K-line
-    setTimeout(function() {
-    var canvas = document.getElementById("klc");
-    if (!canvas) return;
-    var ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    var W = canvas.width = canvas.offsetWidth * 2;
-    var H = canvas.height = canvas.offsetHeight * 2;
-    var data = genKL(s.p, 20);
-    var maxP = 0, minP = Infinity, maxV = 0;
-    for (var di = 0; di < data.length; di++) {
-        if (data[di].h > maxP) maxP = data[di].h;
-        if (data[di].l < minP) minP = data[di].l;
-        if (data[di].v > maxV) maxV = data[di].v;
-    }
-    var pad = 20, cP = {t: pad, b: H * 0.75, l: pad * 2, r: W - pad};
-    var cH = cP.b - cP.t, cW = cP.r - cP.l;
-    var barW = Math.min(cW / data.length * 0.6, 10), gap = cW / data.length;
-    var px = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
-    var pv = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
-    
-    // Background
-    ctx.fillStyle = "#f8f9fa";
-    ctx.fillRect(0, 0, W, H);
-    
-    // Grid lines
-    ctx.strokeStyle = "#e8edf5";
-    ctx.lineWidth = 1;
-    for (var gi = 0; gi < 5; gi++) {
-        var y = cP.t + cH * gi / 4;
-        ctx.beginPath(); ctx.moveTo(cP.l, y); ctx.lineTo(cP.r, y); ctx.stroke();
-    }
-    
-    // Price labels
-    ctx.fillStyle = "#666"; ctx.font = "10px Arial";
-    for (var gi = 0; gi < 5; gi++) {
-        var y = cP.t + cH * gi / 4;
-        var val = maxP - (maxP - minP) * gi / 4;
-        ctx.fillText(val.toFixed(2), 2, y + 3);
-    }
-    
-    // Candlesticks and volume
-    for (var di = 0; di < data.length; di++) {
-        var d = data[di];
-        var x = cP.l + gap * di + gap / 2;
-        var isUp = d.c >= d.o;
-        ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
-        ctx.fillStyle = isUp ? "#E53935" : "#43A047";
-        
-        // Shadow (high-low line)
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x, px(d.h)); ctx.lineTo(x, px(d.l)); ctx.stroke();
-        
-        // Real body
-        var top = px(Math.max(d.o, d.c));
-        var bot = px(Math.min(d.o, d.c));
-        ctx.fillRect(x - barW / 2, top, barW, Math.max(1, bot - top));
-        
-        // Volume bar in bottom quarter
-        var volH = (d.v / maxV) * (H * 0.2);
-        ctx.fillStyle = isUp ? "rgba(229,57,53,0.3)" : "rgba(67,160,71,0.3)";
-        ctx.fillRect(x - barW / 2, H * 0.78 - volH, barW, volH);
-    }
-    
-    // MA5 and MA10 lines
-    var colors = ["#1976D2", "#FB8C00"];
-    var periods = [5, 10];
-    for (var pi = 0; pi < periods.length; pi++) {
-        var period = periods[pi];
-        if (data.length < period) continue;
-        ctx.strokeStyle = colors[pi];
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (var di = period - 1; di < data.length; di++) {
-            var sum = 0;
-            for (var si = di - period + 1; si <= di; si++) sum += data[si].c;
-            var ma = sum / period;
-            var x = cP.l + gap * di + gap / 2;
-            if (di === period - 1) ctx.moveTo(x, px(ma));
-            else ctx.lineTo(x, px(ma));
-        }
-        ctx.stroke();
-    }
-    
-    // Legend
-    ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
-    ctx.fillText("MA5", cP.r - 60, cP.t + 10);
-    ctx.fillStyle = "#FB8C00";
-    ctx.fillText("MA10", cP.r - 30, cP.t + 10);
-    
- drawKL("klc", klData); }, 100);
-    
-    // Attach watch event
-    setTimeout(function() {
-    var canvas = document.getElementById("kc");
-    if (!canvas) return;
-    var ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    var W = canvas.width = canvas.offsetWidth * 2;
-    var H = canvas.height = canvas.offsetHeight * 2;
-    var data = genKL(s.p, 20);
-    var maxP = 0, minP = Infinity, maxV = 0;
-    for (var di = 0; di < data.length; di++) {
-        if (data[di].h > maxP) maxP = data[di].h;
-        if (data[di].l < minP) minP = data[di].l;
-        if (data[di].v > maxV) maxV = data[di].v;
-    }
-    var pad = 20, cP = {t: pad, b: H * 0.75, l: pad * 2, r: W - pad};
-    var cH = cP.b - cP.t, cW = cP.r - cP.l;
-    var barW = Math.min(cW / data.length * 0.6, 10), gap = cW / data.length;
-    var px = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
-    var pv = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
-    
-    // Background
-    ctx.fillStyle = "#f8f9fa";
-    ctx.fillRect(0, 0, W, H);
-    
-    // Grid lines
-    ctx.strokeStyle = "#e8edf5";
-    ctx.lineWidth = 1;
-    for (var gi = 0; gi < 5; gi++) {
-        var y = cP.t + cH * gi / 4;
-        ctx.beginPath(); ctx.moveTo(cP.l, y); ctx.lineTo(cP.r, y); ctx.stroke();
-    }
-    
-    // Price labels
-    ctx.fillStyle = "#666"; ctx.font = "10px Arial";
-    for (var gi = 0; gi < 5; gi++) {
-        var y = cP.t + cH * gi / 4;
-        var val = maxP - (maxP - minP) * gi / 4;
-        ctx.fillText(val.toFixed(2), 2, y + 3);
-    }
-    
-    // Candlesticks and volume
-    for (var di = 0; di < data.length; di++) {
-        var d = data[di];
-        var x = cP.l + gap * di + gap / 2;
-        var isUp = d.c >= d.o;
-        ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
-        ctx.fillStyle = isUp ? "#E53935" : "#43A047";
-        
-        // Shadow (high-low line)
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x, px(d.h)); ctx.lineTo(x, px(d.l)); ctx.stroke();
-        
-        // Real body
-        var top = px(Math.max(d.o, d.c));
-        var bot = px(Math.min(d.o, d.c));
-        ctx.fillRect(x - barW / 2, top, barW, Math.max(1, bot - top));
-        
-        // Volume bar in bottom quarter
-        var volH = (d.v / maxV) * (H * 0.2);
-        ctx.fillStyle = isUp ? "rgba(229,57,53,0.3)" : "rgba(67,160,71,0.3)";
-        ctx.fillRect(x - barW / 2, H * 0.78 - volH, barW, volH);
-    }
-    
-    // MA5 and MA10 lines
-    var colors = ["#1976D2", "#FB8C00"];
-    var periods = [5, 10];
-    for (var pi = 0; pi < periods.length; pi++) {
-        var period = periods[pi];
-        if (data.length < period) continue;
-        ctx.strokeStyle = colors[pi];
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (var di = period - 1; di < data.length; di++) {
-            var sum = 0;
-            for (var si = di - period + 1; si <= di; si++) sum += data[si].c;
-            var ma = sum / period;
-            var x = cP.l + gap * di + gap / 2;
-            if (di === period - 1) ctx.moveTo(x, px(ma));
-            else ctx.lineTo(x, px(ma));
-        }
-        ctx.stroke();
-    }
-    
-    // Legend
-    ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
-    ctx.fillText("MA5", cP.r - 60, cP.t + 10);
-    ctx.fillStyle = "#FB8C00";
-    ctx.fillText("MA10", cP.r - 30, cP.t + 10);
-    
+        document.body.appendChild(d);
 
-        var btn = $("dtBtn");
-        if (btn) {
-            btn.onclick = function() {
-                toggleWatch(s.c);
-                d.remove();
-            };
+    // Draw K-line with volume
+    setTimeout(function() {
+        var cv = document.getElementById("klc");
+        if (!cv) return;
+        var ctx = cv.getContext("2d");
+        if (!ctx) return;
+        var W = cv.parentElement.clientWidth - 20 || 320;
+        if (W < 100) W = 320;
+        var H = 220, pVol = 15, vHH = 55;
+        cv.width = W * 2;
+        cv.height = (H + vHH + pVol * 2) * 2;
+        cv.style.width = W + "px";
+        cv.style.height = (H + vHH + pVol * 2) + "px";
+        ctx.scale(2, 2);
+        ctx.clearRect(0, 0, W, H + vHH + pVol * 2);
+        
+        var data = genKL(s.p, 20);
+        if (!data || data.length < 2) return;
+        var maxP = -Infinity, minP = Infinity, maxV = 0;
+        for (var di = 0; di < data.length; di++) {
+            if (data[di].h > maxP) maxP = data[di].h;
+            if (data[di].l < minP) minP = data[di].l;
+            if (data[di].v > maxV) maxV = data[di].v;
         }
-    }, 50);
+        if (maxV === 0) maxV = 1;
+        var rg = maxP - minP || 1;
+        
+        // Volume bars (top section)
+        var barW = Math.min((W - pVol * 2) / data.length * 0.6, 8);
+        var gap = (W - pVol * 2) / data.length;
+        ctx.font = "9px Arial";
+        ctx.fillStyle = "#999";
+        ctx.fillText("成交量", 4, 10);
+        for (var di = 0; di < data.length; di++) {
+            var d2 = data[di];
+            var xV = pVol + gap * di + gap / 2;
+            var isUp2 = d2.c >= d2.o;
+            var volH = (d2.v / maxV) * vHH * 0.85;
+            ctx.fillStyle = isUp2 ? "rgba(229,57,53,0.5)" : "rgba(67,160,71,0.5)";
+            ctx.fillRect(xV - barW / 2, vHH - volH, barW, Math.max(1, volH));
+        }
+        
+        // K-line (bottom section)
+        var cY = vHH + pVol;
+        var cH2 = H;
+        var pL = 50, pR = 10;
+        var cw = W - pL - pR;
+        function pY(v) { return cY + (1 - (v - minP) / rg) * cH2; }
+        
+        // Background
+        ctx.fillStyle = "#f8f9fa";
+        ctx.fillRect(0, cY, W, cH2);
+        
+        // Grid lines
+        ctx.strokeStyle = "#e8edf5";
+        ctx.lineWidth = 0.5;
+        for (var gi = 0; gi < 5; gi++) {
+            var yG = cY + cH2 * gi / 4;
+            ctx.beginPath(); ctx.moveTo(pL, yG); ctx.lineTo(pL + cw, yG); ctx.stroke();
+            ctx.fillStyle = "#666";
+            ctx.font = "9px Arial";
+            ctx.fillText((maxP - (maxP - minP) * gi / 4).toFixed(2), 2, yG + 3);
+        }
+        
+        // Candlesticks
+        barW = Math.min(cw / data.length * 0.6, 10);
+        gap = cw / data.length;
+        ctx.textAlign = "center";
+        for (var di = 0; di < data.length; di++) {
+            var d = data[di];
+            var xK = pL + gap * di + gap / 2;
+            var isUp = d.c >= d.o;
+            ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
+            ctx.fillStyle = isUp ? "#E53935" : "#43A047";
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(xK, pY(d.h)); ctx.lineTo(xK, pY(d.l)); ctx.stroke();
+            var t = pY(Math.max(d.o, d.c));
+            var b = pY(Math.min(d.o, d.c));
+            ctx.fillRect(xK - barW / 2, t, barW, Math.max(1, b - t));
+            // Date
+            if (di % Math.ceil(data.length / 5) === 0 || di === data.length - 1) {
+                ctx.fillStyle = "#999";
+                ctx.font = "9px Arial";
+                ctx.fillText(d.t, xK, cY + cH2 - 3);
+            }
+        }
+        
+        // MA5/MA10
+        var colors = ["#1976D2", "#FB8C00"];
+        var periods = [5, 10];
+        for (var pi = 0; pi < periods.length; pi++) {
+            var p = periods[pi];
+            if (data.length < p) continue;
+            ctx.strokeStyle = colors[pi];
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            for (var di = p - 1; di < data.length; di++) {
+                var sum = 0;
+                for (var s = di - p + 1; s <= di; s++) sum += data[s].c;
+                var ma = sum / p;
+                var xM = pL + gap * di + gap / 2;
+                if (di === p - 1) ctx.moveTo(xM, pY(ma));
+                else ctx.lineTo(xM, pY(ma));
+            }
+            ctx.stroke();
+        }
+        
+        // Legend
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
+        ctx.fillText("MA5", pL + cw - 60, cY + 12);
+        ctx.fillStyle = "#FB8C00";
+        ctx.fillText("MA10", pL + cw - 30, cY + 12);
+    }, 100);
+    
+    // Attach watch event (fixed: outside setTimeout, with correct canvas)
+    var btn = $("dtBtn");
+    if (btn) {
+        btn.onclick = function() {
+            toggleWatch(s.c);
+            d.remove();
+        };
+    }
 }
+
 
 // ====== REVIEW ======
 function showReview() {
