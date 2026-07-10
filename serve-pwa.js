@@ -1,4 +1,4 @@
-// 零依赖静态服务器：把 www/ 以 HTTP 提供在 0.0.0.0:8080
+﻿// 零依赖静态服务器：把 www/ 以 HTTP 提供在 0.0.0.0:8080
 // 用法: node serve-pwa.js   (然后手机浏览器访问 http://<本机局域网IP>:8080)
 const http = require('http');
 const fs = require('fs');
@@ -32,12 +32,12 @@ const server = http.createServer((req, res) => {
       // SPA / 兜底回 index.html
       fs.readFile(path.join(root, 'index.html'), (e2, d2) => {
         if (e2) { res.writeHead(404); res.end('Not found'); }
-        else { res.writeHead(200, { 'Content-Type': mime['.html'] }); res.end(d2); }
+        else { res.writeHead(200, { 'Content-Type': mime['.html'], 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }); res.end(d2); }
       });
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' });
     res.end(data);
   });
 });

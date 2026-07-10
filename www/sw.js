@@ -1,5 +1,5 @@
-// Service Worker for 易起来AI选股
-const CACHE = "yiqilai-v1";
+﻿// Service Worker for 易起来AI选股
+const CACHE = "yiqilai-v56";
 const URLS = [
   "index.html",
   "manifest.json",
@@ -27,9 +27,19 @@ self.addEventListener("activate", function(e) {
 });
 
 self.addEventListener("fetch", function(e) {
-  e.respondWith(
-    caches.match(e.request).then(function(r) {
-      return r || fetch(e.request);
-    })
-  );
+  // For HTML, always fetch from network first
+  if (e.request.mode === 'navigate' || (e.request.headers.get('Accept') || '').indexOf('text/html') >= 0) {
+    e.respondWith(
+      fetch(e.request).catch(function() {
+        return caches.match(e.request);
+      })
+    );
+  } else {
+    // For assets, cache-first
+    e.respondWith(
+      caches.match(e.request).then(function(r) {
+        return r || fetch(e.request);
+      })
+    );
+  }
 });

@@ -66,7 +66,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 .cr{font-size:10px;color:var(--t3);text-align:center;padding:14px;line-height:1.6}
 canvas{display:block;width:100%;height:200px;margin:6px 0;border-radius:6px;background:var(--bg)}
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-</style></head><body><div class="app"><div class="head"><div><strong style="font-size:19px;color:var(--blue)">易起来</strong> <span style="background:var(--red);color:#fff;font-size:10px;border-radius:10px;padding:1px 6px" id="aN">0</span><br><span style="font-size:10px;color:var(--t3)" id="uS">未登录</span> <span style="font-size:10px;color:var(--t3)" id="dS">· 模拟</span></div><div><button class="bs bo" id="lB" style="font-size:10px">登录</button></div></div>
+</style></head><body><div class="app"><div class="head"><div><strong style="font-size:19px;color:var(--blue)">易起来</strong> <span style="background:var(--red);color:#fff;font-size:10px;border-radius:10px;padding:1px 6px" id="aN">0</span><br><span style="font-size:10px;color:var(--t3)" id="uS">未登录</span> </div><div><button class="bs bo" id="lB" style="font-size:10px">登录</button></div></div>
 <div class="body" id="bd">
 <div class="pg act" id="p0"><div id="c0"></div></div>
 <div class="pg" id="p1"><div id="c1"></div></div>
@@ -86,10 +86,10 @@ canvas{display:block;width:100%;height:200px;margin:6px 0;border-radius:6px;back
 // ====== DATA ======
 var USERS = JSON.parse(localStorage.getItem("yu") || "[]");
 var CUR = null;
-var SIM = localStorage.getItem("ys") !== "f";
+
 var Q = [];
 var W = [];
-var VIP = false; // placeholder, isVIP() checks dynamically
+
 
 // Try to restore session
 var savedUser = localStorage.getItem("yu_c");
@@ -150,7 +150,9 @@ function toast(msg) {
     t.textContent = msg;
     clearTimeout(t._to);
     t.className = "toast sh";
-    t._to = setTimeout(function() { t.className = "toast"; }, 1800);
+        t._to = setTimeout(function() {
+        t.className = "toast";
+    }, 1800);
 }
 
 function login(u, p) {
@@ -189,17 +191,11 @@ function updateUI() {
     var b = $("lB");
     if (d) d.textContent = CUR ? CUR.u : "未登录";
     if (b) b.textContent = CUR ? "退出" : "登录";
-    var s = $("dS");
-    if (s) s.textContent = "\u00b7 " + (SIM ? "模拟" : "实时");
+
+
 }
 
-function toggleDS() {
-    SIM = !SIM;
-    localStorage.setItem("ys", SIM ? "" : "f");
-    toast("已切换为" + (SIM ? "模拟数据" : "实时行情"));
-    renderAll();
-    updateUI();
-}
+
 
 function inWatch(code) {
     return W.indexOf(code) > -1;
@@ -219,8 +215,9 @@ function toggleWatch(code) {
     } else {
         localStorage.setItem("yw", JSON.stringify(W));
     }
-    renderAll();
 }
+    
+
 
 function fmtPct(v) {
     if (v >= 0) return "+" + v.toFixed(2) + "%";
@@ -229,6 +226,7 @@ function fmtPct(v) {
 
 function pCls(v) { return v >= 0 ? "r" : "g"; }
 function pCol(v) { return v >= 0 ? "var(--red)" : "var(--green)"; }
+
 
 
 // ====== VIP APPLICATION SYSTEM ======
@@ -253,20 +251,48 @@ function refreshVIP() {
 }
 function applyVIP() {
     if (!CUR) { toast("请先登录"); return; }
-    if (isVIP()) { toast("您已是会员"); return; }
+    if (isVIP()) { toast("您已是用户"); return; }
     var apps = getVIPApps();
     // Check if already applied
     for (var i = 0; i < apps.length; i++) {
         if (apps[i].u === CUR.u) {
-            if (apps[i].approved) { toast("您已是会员"); return; }
-            toast("已提交申请，请等待管理员审核");
+            if (apps[i].approved) { toast("您已是用户"); return; }
+            toast("已提交请求，请等待管理员审核");
             return;
         }
     }
     apps.push({u: CUR.u, t: Date.now(), approved: false});
     saveVIPApps(apps);
-    toast("会员申请已提交，请联系管理员(admin)审核");
+    toast("用户请求已提交，请联系管理员(admin)审核");
 }
+
+function deleteUser(u) {
+    if (!CUR || CUR.r !== "admin") { toast("无权限"); return; }
+    if (u === "admin") { toast("不能删除管理员"); return; }
+    var confirmed = confirm("确定删除用户 " + u + " ？");
+    if (!confirmed) return;
+    var found = false;
+    for (var i = 0; i < USERS.length; i++) {
+        if (USERS[i].u === u) {
+            USERS.splice(i, 1);
+            found = true;
+            break;
+        }
+    }
+    if (found) {
+        localStorage.setItem("yu", JSON.stringify(USERS));
+        // Also remove their watchlist
+        localStorage.removeItem("yw_" + u);
+        toast("已删除用户: " + u);
+        // Refresh admin panel
+        var m = document.querySelector(".mo.sh");
+        if (m) m.remove();
+        showAdminPanel();
+    } else {
+        toast("未找到用户");
+    }
+}
+
 function showAdminPanel() {
     if (!CUR || CUR.r !== "admin") { toast("无权限"); return; }
     var apps = getVIPApps();
@@ -276,21 +302,21 @@ function showAdminPanel() {
     m.className = "mo sh";
     m.onclick = function(e) { if (e.target === this) m.remove(); };
     var h = '<div class="mx"><h3>🔐 管理员后台</h3><div class="st" style="font-size:12px">👤 当前管理员：' + CUR.u + '</div>';
-    h += '<div class="st">📋 待审核会员申请 (' + pending.length + ')</div>';
+    h += '<div class="st">📋 待审核用户请求 (' + pending.length + ')</div>';
     if (pending.length === 0) {
-        h += '<div style="font-size:11px;color:var(--t3);padding:8px;text-align:center">暂无待审核申请</div>';
+        h += '<div style="font-size:11px;color:var(--t3);padding:8px;text-align:center">暂无待审核请求</div>';
     } else {
         for (var i = 0; i < pending.length; i++) {
             var a = pending[i];
             var dt = new Date(a.t);
             h += '<div style="background:var(--bg);border-radius:8px;padding:8px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">';
-            h += '<div><div style="font-weight:600;font-size:13px">👤 ' + a.u + '</div><div style="font-size:10px;color:var(--t3)">申请时间：' + dt.toLocaleString() + '</div></div>';
+            h += '<div><div style="font-weight:600;font-size:13px">👤 ' + a.u + '</div><div style="font-size:10px;color:var(--t3)">请求时间：' + dt.toLocaleString() + '</div></div>';
             h += '<div style="display:flex;gap:4px"><button class="bs bp" style="font-size:10px;padding:4px 8px" onclick="approveVIP(\'' + a.u + '\');document.querySelector(\'.mo.sh\').remove();showAdminPanel()">✅ 通过</button>';
             h += '<button class="bs bo" style="font-size:10px;padding:4px 8px" onclick="rejectVIP(\'' + a.u + '\');document.querySelector(\'.mo.sh\').remove();showAdminPanel()">❌ 拒绝</button></div></div>';
         }
     }
     if (approved.length > 0) {
-        h += '<div class="st">✅ 已通过会员 (' + approved.length + ')</div>';
+        h += '<div class="st">✅ 已通过用户 (' + approved.length + ')</div>';
         for (var i = 0; i < approved.length; i++) {
             h += '<div style="font-size:11px;padding:4px 6px;color:var(--green)">✅ ' + approved[i].u + '</div>';
         }
@@ -305,7 +331,7 @@ function approveVIP(u) {
         if (apps[i].u === u) { apps[i].approved = true; break; }
     }
     saveVIPApps(apps);
-    toast("已通过 " + u + " 的会员申请");
+    toast("已通过 " + u + " 的用户请求");
     refreshVIP();
 }
 function rejectVIP(u) {
@@ -314,7 +340,7 @@ function rejectVIP(u) {
         if (apps[i].u === u) { apps.splice(i, 1); break; }
     }
     saveVIPApps(apps);
-    toast("已拒绝 " + u + " 的会员申请");
+    toast("已拒绝 " + u + " 的用户请求");
     refreshVIP();
 }
 
@@ -496,7 +522,7 @@ function showVIP() {
     var v = document.createElement("div");
     v.className = "mo sh";
     v.onclick = function(e) { if (e.target === this) v.remove(); };
-    v.innerHTML = '<div class="mx"><h3>🌟 开通会员</h3><div style="background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--orange)">¥49<small>/月</small></div><div style="font-size:10px;color:var(--t3)">首月特惠</div></div><div style="margin:8px 0;line-height:1.8;font-size:11px"><div>✅ 全部AI精选（含强烈推荐）</div><div>✅ 预警不限量推送</div><div>✅ 智能问股+个股分析</div></div><button class="bs bg" style="width:100%;padding:8px;font-size:12px" onclick="applyVIP()">提交申请 · 等待审核</button><button class="bs bo" style="width:100%;padding:6px;font-size:11px;margin-top:5px" onclick="document.querySelector(\'.mo.sh\').remove()">稍后</button></div>';
+    v.innerHTML = '<div class="mx"><h3>🌟 开通用户</h3><div style="background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--orange)">¥49<small>/月</small></div><div style="font-size:10px;color:var(--t3)">首月特惠</div></div><div style="margin:8px 0;line-height:1.8;font-size:11px"><div>✅ 全部AI精选（含强烈推荐）</div><div>✅ 预警不限量推送</div><div>✅ 智能问股+个股分析</div></div><button class="bs bg" style="width:100%;padding:8px;font-size:12px" onclick="applyVIP()">提交请求 · 等待审核</button><button class="bs bo" style="width:100%;padding:6px;font-size:11px;margin-top:5px" onclick="document.querySelector(\'.mo.sh\').remove()">稍后</button></div>';
     document.body.appendChild(v);
 }
 
@@ -544,10 +570,455 @@ function showDetail(code) {
     document.body.appendChild(d);
     
     // Draw K-line
-    setTimeout(function() { drawKL("klc", klData); }, 100);
+    setTimeout(function() {
+    var canvas = document.getElementById("klc");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    var W = canvas.width = canvas.offsetWidth * 2;
+    var H = canvas.height = canvas.offsetHeight * 2;
+    var data = genKL(s.p, 20);
+    var maxP = 0, minP = Infinity, maxV = 0;
+    for (var di = 0; di < data.length; di++) {
+        if (data[di].h > maxP) maxP = data[di].h;
+        if (data[di].l < minP) minP = data[di].l;
+        if (data[di].v > maxV) maxV = data[di].v;
+    }
+    var pad = 20, cP = {t: pad, b: H * 0.75, l: pad * 2, r: W - pad};
+    var cH = cP.b - cP.t, cW = cP.r - cP.l;
+    var barW = Math.min(cW / data.length * 0.6, 10), gap = cW / data.length;
+    var px = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    var pv = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    
+    // Background
+    ctx.fillStyle = "#f8f9fa";
+    ctx.fillRect(0, 0, W, H);
+    
+    // Grid lines
+    ctx.strokeStyle = "#e8edf5";
+    ctx.lineWidth = 1;
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        ctx.beginPath(); ctx.moveTo(cP.l, y); ctx.lineTo(cP.r, y); ctx.stroke();
+    }
+    
+    // Price labels
+    ctx.fillStyle = "#666"; ctx.font = "10px Arial";
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        var val = maxP - (maxP - minP) * gi / 4;
+        ctx.fillText(val.toFixed(2), 2, y + 3);
+    }
+    
+    // Candlesticks and volume
+    for (var di = 0; di < data.length; di++) {
+        var d = data[di];
+        var x = cP.l + gap * di + gap / 2;
+        var isUp = d.c >= d.o;
+        ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
+        ctx.fillStyle = isUp ? "#E53935" : "#43A047";
+        
+        // Shadow (high-low line)
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, px(d.h)); ctx.lineTo(x, px(d.l)); ctx.stroke();
+        
+        // Real body
+        var top = px(Math.max(d.o, d.c));
+        var bot = px(Math.min(d.o, d.c));
+        ctx.fillRect(x - barW / 2, top, barW, Math.max(1, bot - top));
+        
+        // Volume bar in bottom quarter
+        var volH = (d.v / maxV) * (H * 0.2);
+        ctx.fillStyle = isUp ? "rgba(229,57,53,0.3)" : "rgba(67,160,71,0.3)";
+        ctx.fillRect(x - barW / 2, H * 0.78 - volH, barW, volH);
+    }
+    
+    // MA5 and MA10 lines
+    var colors = ["#1976D2", "#FB8C00"];
+    var periods = [5, 10];
+    for (var pi = 0; pi < periods.length; pi++) {
+        var period = periods[pi];
+        if (data.length < period) continue;
+        ctx.strokeStyle = colors[pi];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var di = period - 1; di < data.length; di++) {
+            var sum = 0;
+            for (var si = di - period + 1; si <= di; si++) sum += data[si].c;
+            var ma = sum / period;
+            var x = cP.l + gap * di + gap / 2;
+            if (di === period - 1) ctx.moveTo(x, px(ma));
+            else ctx.lineTo(x, px(ma));
+        }
+        ctx.stroke();
+    }
+    
+    // Legend
+    ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
+    ctx.fillText("MA5", cP.r - 60, cP.t + 10);
+    ctx.fillStyle = "#FB8C00";
+    ctx.fillText("MA10", cP.r - 30, cP.t + 10);
+    
+ drawKL("klc", klData); }, 100);
     
     // Attach watch event
     setTimeout(function() {
+    var canvas = document.getElementById("kc");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    var W = canvas.width = canvas.offsetWidth * 2;
+    var H = canvas.height = canvas.offsetHeight * 2;
+    var data = genKL(s.p, 20);
+    var maxP = 0, minP = Infinity, maxV = 0;
+    for (var di = 0; di < data.length; di++) {
+        if (data[di].h > maxP) maxP = data[di].h;
+        if (data[di].l < minP) minP = data[di].l;
+        if (data[di].v > maxV) maxV = data[di].v;
+    }
+    var pad = 20, cP = {t: pad, b: H * 0.75, l: pad * 2, r: W - pad};
+    var cH = cP.b - cP.t, cW = cP.r - cP.l;
+    var barW = Math.min(cW / data.length * 0.6, 10), gap = cW / data.length;
+    var px = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    var pv = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    
+    // Background
+    ctx.fillStyle = "#f8f9fa";
+    ctx.fillRect(0, 0, W, H);
+    
+    // Grid lines
+    ctx.strokeStyle = "#e8edf5";
+    ctx.lineWidth = 1;
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        ctx.beginPath(); ctx.moveTo(cP.l, y); ctx.lineTo(cP.r, y); ctx.stroke();
+    }
+    
+    // Price labels
+    ctx.fillStyle = "#666"; ctx.font = "10px Arial";
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        var val = maxP - (maxP - minP) * gi / 4;
+        ctx.fillText(val.toFixed(2), 2, y + 3);
+    }
+    
+    // Candlesticks and volume
+    for (var di = 0; di < data.length; di++) {
+        var d = data[di];
+        var x = cP.l + gap * di + gap / 2;
+        var isUp = d.c >= d.o;
+        ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
+        ctx.fillStyle = isUp ? "#E53935" : "#43A047";
+        
+        // Shadow (high-low line)
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, px(d.h)); ctx.lineTo(x, px(d.l)); ctx.stroke();
+        
+        // Real body
+        var top = px(Math.max(d.o, d.c));
+        var bot = px(Math.min(d.o, d.c));
+        ctx.fillRect(x - barW / 2, top, barW, Math.max(1, bot - top));
+        
+        // Volume bar in bottom quarter
+        var volH = (d.v / maxV) * (H * 0.2);
+        ctx.fillStyle = isUp ? "rgba(229,57,53,0.3)" : "rgba(67,160,71,0.3)";
+        ctx.fillRect(x - barW / 2, H * 0.78 - volH, barW, volH);
+    }
+    
+    // MA5 and MA10 lines
+    var colors = ["#1976D2", "#FB8C00"];
+    var periods = [5, 10];
+    for (var pi = 0; pi < periods.length; pi++) {
+        var period = periods[pi];
+        if (data.length < period) continue;
+        ctx.strokeStyle = colors[pi];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var di = period - 1; di < data.length; di++) {
+            var sum = 0;
+            for (var si = di - period + 1; si <= di; si++) sum += data[si].c;
+            var ma = sum / period;
+            var x = cP.l + gap * di + gap / 2;
+            if (di === period - 1) ctx.moveTo(x, px(ma));
+            else ctx.lineTo(x, px(ma));
+        }
+        ctx.stroke();
+    }
+    
+    // Legend
+    ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
+    ctx.fillText("MA5", cP.r - 60, cP.t + 10);
+    ctx.fillStyle = "#FB8C00";
+    ctx.fillText("MA10", cP.r - 30, cP.t + 10);
+    
+
+        var btn = $("dtBtn");
+        if (btn) {
+            btn.onclick = function() {
+                toggleWatch(s.c);
+                d.remove();
+            };
+        }
+    }, 50);
+}
+
+// ====== REVIEW ======
+function showReview() {
+    var d = document.createElement("div");
+    d.className = "mo sh";
+    d.onclick = function(e) { if (e.target === this) d.remove(); };
+    d.innerHTML = '<div class="mx"><h3>📊 今日复盘</h3>'
+        + '<div class="rc"><div class="rt">📌 大盘总结</div>'
+        + '<div style="font-size:11px;color:var(--t2);line-height:1.6">三大指数震荡走高，成交额1.2万亿。涨跌比3:1，北向净流入28亿。</div>'
+        + '<div class="rr"><span>上证指数</span><span style="font-weight:600;color:var(--red)">3265.43 +0.68%</span></div>'
+        + '<div class="rr"><span>深证成指</span><span style="font-weight:600;color:var(--red)">10532.28 +1.15%</span></div>'
+        + '<div class="rr"><span>创业板指</span><span style="font-weight:600;color:var(--red)">2185.62 +1.42%</span></div></div>'
+        + '<div class="rc"><div class="rt">📈 板块强弱 Top</div>'
+        + '<div class="rr"><span>🏆 机器人</span><span style="color:var(--red);font-weight:600">+4.5%</span></div>'
+        + '<div class="rr"><span>🥈 黄金</span><span style="color:var(--red);font-weight:600">+3.8%</span></div>'
+        + '<div class="rr"><span>🥉 半导体</span><span style="color:var(--red);font-weight:600">+2.6%</span></div></div>'
+        + '<div class="rc"><div class="rt">💰 主力资金流入 Top3</div>'
+        + '<div class="rr"><span>中国平安</span><span style="font-weight:600">1.2亿</span></div>'
+        + '<div class="rr"><span>宁德时代</span><span style="font-weight:600">9800万</span></div>'
+        + '<div class="rr"><span>双环传动</span><span style="font-weight:600">8600万</span></div></div></div>';
+    document.body.appendChild(d);
+}
+
+
+function showVIP() {
+    var v = document.createElement("div");
+    v.className = "mo sh";
+    v.onclick = function(e) { if (e.target === this) v.remove(); };
+    v.innerHTML = '<div class="mx"><h3>🌟 开通用户</h3><div style="background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--orange)">¥49<small>/月</small></div><div style="font-size:10px;color:var(--t3)">首月特惠</div></div><div style="margin:8px 0;line-height:1.8;font-size:11px"><div>✅ 全部AI精选（含强烈推荐）</div><div>✅ 预警不限量推送</div><div>✅ 智能问股+个股分析</div></div><button class="bs bg" style="width:100%;padding:8px;font-size:12px" onclick="applyVIP()">提交请求 · 等待审核</button><button class="bs bo" style="width:100%;padding:6px;font-size:11px;margin-top:5px" onclick="document.querySelector(\'.mo.sh\').remove()">稍后</button></div>';
+    document.body.appendChild(v);
+}
+
+// ====== STOCK DETAIL ======
+function showDetail(code) {
+    var s = null;
+    for (var i = 0; i < STOCKS.length; i++) {
+        if (STOCKS[i].c === code) { s = STOCKS[i]; break; }
+    }
+    if (!s) return;
+    
+    var klData = genKL(s.p, 20);
+    var d = document.createElement("div");
+    d.className = "mo sh";
+    d.onclick = function(e) { if (e.target === this) d.remove(); };
+    
+    var techText = "";
+    switch (s.c) {
+        case "002472": techText = "放量突破20日线，MACD金叉，量比2.8"; break;
+        case "600988": techText = "放量突破20日线，量比2.1"; break;
+        case "601318": techText = "底部放量，企稳信号明显"; break;
+        case "300750": techText = "放量突破前高，趋势强劲"; break;
+        case "002230": techText = "AI概念活跃，放量拉升"; break;
+        case "000708": techText = "低估值高分红，技术面稳健"; break;
+        case "600885": techText = "趋势向上，量价配合良好"; break;
+        case "000333": techText = "多头排列，稳步上行通道"; break;
+        case "002475": techText = "回踩支撑位，缩量企稳"; break;
+        case "600519": techText = "高位缩量调整，等待方向"; break;
+        default: techText = "K线多头排列，走势健康";
+    }
+    
+    var isUp = s.ch >= 0;
+    var btnText = inWatch(s.c) ? "✅ 已自选" : "➕ 加自选";
+    
+    d.innerHTML = '<div class="mx"><h3 style="text-align:left">' + s.n + ' ' + s.c + '</h3>'
+        + '<div style="font-size:18px;font-weight:700;margin:4px 0">' + (s.p ? s.p.toFixed(2) : "-") + ' <span style="font-size:12px;color:' + pCol(s.ch) + '">' + fmtPct(s.ch) + '</span></div>'
+        + '<div style="font-size:10px;color:var(--t3);margin:4px 0">' + s.se + ' | 关注价 ' + s.z + ' | ⚠ ' + s.rk + '</div>'
+        + '<canvas id="klc"></canvas>'
+        + '<div style="padding:8px;background:var(--bg);border-radius:6px;font-size:11px;line-height:1.8">'
+        + '<b>技术面</b> ' + techText + '<br>'
+        + '<b>资金面</b> ' + (s.f || "平稳") + '<br>'
+        + '<b>AI评分</b> <span style="color:var(--red);font-weight:700">' + Math.round(70 + Math.random() * 20) + "/100</span></div>"
+        + '<div class="sa" style="margin-top:8px"><button class="bs bp" id="dtBtn">' + btnText + '</button></div></div>';
+    
+    document.body.appendChild(d);
+    
+    // Draw K-line
+    setTimeout(function() {
+    var canvas = document.getElementById("kc");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    var W = canvas.width = canvas.offsetWidth * 2;
+    var H = canvas.height = canvas.offsetHeight * 2;
+    var data = genKL(s.p, 20);
+    var maxP = 0, minP = Infinity, maxV = 0;
+    for (var di = 0; di < data.length; di++) {
+        if (data[di].h > maxP) maxP = data[di].h;
+        if (data[di].l < minP) minP = data[di].l;
+        if (data[di].v > maxV) maxV = data[di].v;
+    }
+    var pad = 20, cP = {t: pad, b: H * 0.75, l: pad * 2, r: W - pad};
+    var cH = cP.b - cP.t, cW = cP.r - cP.l;
+    var barW = Math.min(cW / data.length * 0.6, 10), gap = cW / data.length;
+    var px = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    var pv = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    
+    // Background
+    ctx.fillStyle = "#f8f9fa";
+    ctx.fillRect(0, 0, W, H);
+    
+    // Grid lines
+    ctx.strokeStyle = "#e8edf5";
+    ctx.lineWidth = 1;
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        ctx.beginPath(); ctx.moveTo(cP.l, y); ctx.lineTo(cP.r, y); ctx.stroke();
+    }
+    
+    // Price labels
+    ctx.fillStyle = "#666"; ctx.font = "10px Arial";
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        var val = maxP - (maxP - minP) * gi / 4;
+        ctx.fillText(val.toFixed(2), 2, y + 3);
+    }
+    
+    // Candlesticks and volume
+    for (var di = 0; di < data.length; di++) {
+        var d = data[di];
+        var x = cP.l + gap * di + gap / 2;
+        var isUp = d.c >= d.o;
+        ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
+        ctx.fillStyle = isUp ? "#E53935" : "#43A047";
+        
+        // Shadow (high-low line)
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, px(d.h)); ctx.lineTo(x, px(d.l)); ctx.stroke();
+        
+        // Real body
+        var top = px(Math.max(d.o, d.c));
+        var bot = px(Math.min(d.o, d.c));
+        ctx.fillRect(x - barW / 2, top, barW, Math.max(1, bot - top));
+        
+        // Volume bar in bottom quarter
+        var volH = (d.v / maxV) * (H * 0.2);
+        ctx.fillStyle = isUp ? "rgba(229,57,53,0.3)" : "rgba(67,160,71,0.3)";
+        ctx.fillRect(x - barW / 2, H * 0.78 - volH, barW, volH);
+    }
+    
+    // MA5 and MA10 lines
+    var colors = ["#1976D2", "#FB8C00"];
+    var periods = [5, 10];
+    for (var pi = 0; pi < periods.length; pi++) {
+        var period = periods[pi];
+        if (data.length < period) continue;
+        ctx.strokeStyle = colors[pi];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var di = period - 1; di < data.length; di++) {
+            var sum = 0;
+            for (var si = di - period + 1; si <= di; si++) sum += data[si].c;
+            var ma = sum / period;
+            var x = cP.l + gap * di + gap / 2;
+            if (di === period - 1) ctx.moveTo(x, px(ma));
+            else ctx.lineTo(x, px(ma));
+        }
+        ctx.stroke();
+    }
+    
+    // Legend
+    ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
+    ctx.fillText("MA5", cP.r - 60, cP.t + 10);
+    ctx.fillStyle = "#FB8C00";
+    ctx.fillText("MA10", cP.r - 30, cP.t + 10);
+    
+ drawKL("klc", klData); }, 100);
+    
+    // Attach watch event
+    setTimeout(function() {
+    var canvas = document.getElementById("kc");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    var W = canvas.width = canvas.offsetWidth * 2;
+    var H = canvas.height = canvas.offsetHeight * 2;
+    var data = genKL(s.p, 20);
+    var maxP = 0, minP = Infinity, maxV = 0;
+    for (var di = 0; di < data.length; di++) {
+        if (data[di].h > maxP) maxP = data[di].h;
+        if (data[di].l < minP) minP = data[di].l;
+        if (data[di].v > maxV) maxV = data[di].v;
+    }
+    var pad = 20, cP = {t: pad, b: H * 0.75, l: pad * 2, r: W - pad};
+    var cH = cP.b - cP.t, cW = cP.r - cP.l;
+    var barW = Math.min(cW / data.length * 0.6, 10), gap = cW / data.length;
+    var px = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    var pv = function(v) { return cP.t + cH * (1 - (v - minP) / (maxP - minP)); };
+    
+    // Background
+    ctx.fillStyle = "#f8f9fa";
+    ctx.fillRect(0, 0, W, H);
+    
+    // Grid lines
+    ctx.strokeStyle = "#e8edf5";
+    ctx.lineWidth = 1;
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        ctx.beginPath(); ctx.moveTo(cP.l, y); ctx.lineTo(cP.r, y); ctx.stroke();
+    }
+    
+    // Price labels
+    ctx.fillStyle = "#666"; ctx.font = "10px Arial";
+    for (var gi = 0; gi < 5; gi++) {
+        var y = cP.t + cH * gi / 4;
+        var val = maxP - (maxP - minP) * gi / 4;
+        ctx.fillText(val.toFixed(2), 2, y + 3);
+    }
+    
+    // Candlesticks and volume
+    for (var di = 0; di < data.length; di++) {
+        var d = data[di];
+        var x = cP.l + gap * di + gap / 2;
+        var isUp = d.c >= d.o;
+        ctx.strokeStyle = isUp ? "#E53935" : "#43A047";
+        ctx.fillStyle = isUp ? "#E53935" : "#43A047";
+        
+        // Shadow (high-low line)
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, px(d.h)); ctx.lineTo(x, px(d.l)); ctx.stroke();
+        
+        // Real body
+        var top = px(Math.max(d.o, d.c));
+        var bot = px(Math.min(d.o, d.c));
+        ctx.fillRect(x - barW / 2, top, barW, Math.max(1, bot - top));
+        
+        // Volume bar in bottom quarter
+        var volH = (d.v / maxV) * (H * 0.2);
+        ctx.fillStyle = isUp ? "rgba(229,57,53,0.3)" : "rgba(67,160,71,0.3)";
+        ctx.fillRect(x - barW / 2, H * 0.78 - volH, barW, volH);
+    }
+    
+    // MA5 and MA10 lines
+    var colors = ["#1976D2", "#FB8C00"];
+    var periods = [5, 10];
+    for (var pi = 0; pi < periods.length; pi++) {
+        var period = periods[pi];
+        if (data.length < period) continue;
+        ctx.strokeStyle = colors[pi];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var di = period - 1; di < data.length; di++) {
+            var sum = 0;
+            for (var si = di - period + 1; si <= di; si++) sum += data[si].c;
+            var ma = sum / period;
+            var x = cP.l + gap * di + gap / 2;
+            if (di === period - 1) ctx.moveTo(x, px(ma));
+            else ctx.lineTo(x, px(ma));
+        }
+        ctx.stroke();
+    }
+    
+    // Legend
+    ctx.fillStyle = "#1976D2"; ctx.font = "9px Arial";
+    ctx.fillText("MA5", cP.r - 60, cP.t + 10);
+    ctx.fillStyle = "#FB8C00";
+    ctx.fillText("MA10", cP.r - 30, cP.t + 10);
+    
+
         var btn = $("dtBtn");
         if (btn) {
             btn.onclick = function() {
@@ -583,7 +1054,235 @@ function showReview() {
 // ====== RENDER ======
 var curFilter = "all";
 
-function renderAll() {
+
+function showMonthlyReport() {
+    var d = document.createElement("div");
+    d.className = "mo sh";
+    d.onclick = function(e) { if (e.target === this) d.remove(); };
+    var topGainers = STOCKS.slice().sort(function(a,b) { return b.ch - a.ch; }).slice(0, 4);
+    var h = '<div class="mx"><h3>📅 月度投资报告</h3>';
+    h += '<div style="font-size:10px;color:var(--t3);margin-bottom:8px">本月收益分析 · ' + new Date().toLocaleString("zh-CN", {month:"long",year:"numeric"}) + '</div>';
+    h += '<div class="st" style="font-size:11px">📈 本月收益前三</div>';
+    for (var i = 0; i < topGainers.length; i++) {
+        var s = topGainers[i];
+        var col = s.ch >= 0 ? "var(--red)" : "var(--green)";
+        h += '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12px">';
+        h += '<span>' + s.n + '</span><span style="color:' + col + '">' + (s.ch >= 0 ? "+" : "") + s.ch.toFixed(2) + '%</span></div>';
+    }
+    h += '<div class="st" style="font-size:11px;margin-top:8px">📊 板块分布</div>';
+    h += '<div style="font-size:11px;line-height:1.6;padding:4px 0">';
+    h += '机械设备 +4.5% · 有色金属 +3.8% · 非银金融 +2.5% · 电力设备 +3.2% · AI概念 +5.2%</div>';
+    h += '<div class="st" style="font-size:11px;margin-top:8px">💡 下月关注</div>';
+    h += '<div style="font-size:11px;line-height:1.6;padding:4px 0;color:var(--blue)">AI人工智能 · 高端制造 · 低估值高分红</div>';
+    h += '<button class="bs bo" style="width:100%;padding:6px;margin-top:8px" onclick="this.closest(\'.mo\').remove()">关闭</button></div>';
+    d.innerHTML = h;
+    document.body.appendChild(d);
+}
+
+
+function showStrategyCommunity() {
+    var d = document.createElement("div");
+    d.className = "mo sh";
+    d.onclick = function(e) { if (e.target === this) d.remove(); };
+    
+    // Get boards
+    var boards = JSON.parse(localStorage.getItem("yb_boards") || "null");
+    if (!boards) {
+        boards = [
+            {id:"b1", n:"大盘分析", d:"上证/深证/创业板综合讨论", p:12, o:null},
+            {id:"b2", n:"个股研究", d:"基本面技术面深度分析", p:8, o:null},
+            {id:"b3", n:"AI概念", d:"人工智能/机器人/大模型", p:15, o:null},
+            {id:"b4", n:"低PE高分红", d:"低估值价值投资策略", p:6, o:null},
+            {id:"b5", n:"技术分析", d:"MACD/KDJ/量价关系", p:10, o:null},
+            {id:"b6", n:"资金流向", d:"主力资金/北向资金", p:4, o:null},
+        ];
+        localStorage.setItem("yb_boards", JSON.stringify(boards));
+    }
+    // Get bar owners
+    var barOwners = JSON.parse(localStorage.getItem("yb_bar_owners") || "{}");
+    // Get bar owner apps
+    var barApps = JSON.parse(localStorage.getItem("yb_bar_apps") || "[]");
+    
+    // Get user info
+    var isAdmin = CUR && CUR.r === "admin";
+    
+    showMainPage();
+    
+    window.showMainPage = function showMainPage() {
+        var h = '<div class="mx" style="max-width:420px"><h3>📢 策略分享社区</h3>';
+        h += '<div style="font-size:10px;color:var(--t3);margin-bottom:8px">选择板块进入交流</div>';
+        if (isAdmin) {
+            h += '<div style="background:#FFF8E1;border-radius:6px;padding:4px 6px;margin-bottom:6px;font-size:10px">';
+            h += '<span style="cursor:pointer;color:var(--blue)" onclick="showAdminBarApps()">🔐 审核吧主申请(' + barApps.length + ')</span></div>';
+        }
+        for (var i = 0; i < boards.length; i++) {
+            var b = boards[i];
+            var ownerName = barOwners[b.id] || "";
+            var ownerTag = ownerName ? '<span style="font-size:9px;color:var(--orange);margin-left:4px">👑 ' + ownerName + '</span>' : "";
+            h += '<div style="background:var(--card);border-radius:8px;padding:8px;margin-bottom:5px;cursor:pointer;border-left:3px solid var(--blue)" onclick="showBoard(\'' + b.id + '\')">';
+            h += '<div style="display:flex;justify-content:space-between;align-items:center">';
+            h += '<span style="font-weight:600;font-size:13px">' + b.n + ownerTag + '</span>';
+            h += '<span style="font-size:10px;color:var(--t3)">' + b.p + ' 帖</span></div>';
+            h += '<div style="font-size:10px;color:var(--t2);margin-top:2px">' + b.d + '</div></div>';
+        }
+        h += '<button class="bs bo" style="width:100%;padding:6px;margin-top:6px" onclick="d.remove()">关闭</button></div>';
+        d.innerHTML = h;
+    }
+    
+    window.showBoard = function(boardId) {
+        var b = null;
+        for (var i = 0; i < boards.length; i++) { if (boards[i].id === boardId) { b = boards[i]; break; } }
+        if (!b) return;
+        var posts = JSON.parse(localStorage.getItem("yb_posts_" + boardId) || "[]");
+        var ownerName = barOwners[boardId] || "";
+        var canPost = CUR && (isAdmin || ownerName === CUR.u || !ownerName);
+        
+        var h = '<div class="mx" style="max-width:420px"><h3>📢 ' + b.n + '</h3>';
+        h += '<div style="font-size:10px;color:var(--t3);margin-bottom:6px">' + b.d + '</div>';
+        
+        if (!ownerName && CUR) {
+            h += '<div style="background:var(--bg);border-radius:6px;padding:4px 6px;margin-bottom:6px;font-size:10px">';
+            h += '<span style="cursor:pointer;color:var(--orange)" onclick="applyBarOwner(\'' + b.id + '\')">👑 申请吧主</span></div>';
+        }
+        if (ownerName) {
+            h += '<div style="font-size:10px;color:var(--orange);margin-bottom:4px">👑 吧主: ' + ownerName + '</div>';
+        }
+        if (canPost) {
+            h += '<div style="display:flex;gap:4px;margin-bottom:6px"><input id="npT" placeholder="标题" style="flex:1;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:11px;outline:none">';
+            h += '<button class="bs bp" style="font-size:10px;padding:4px 8px" onclick="newPost(\'' + b.id + '\')">发帖</button></div>';
+        }
+        if (posts.length === 0) {
+            h += '<div style="text-align:center;padding:20px;font-size:12px;color:var(--t3)">暂无帖子</div>';
+        } else {
+            for (var i = posts.length - 1; i >= 0; i--) {
+                var p = posts[i];
+                h += '<div style="background:var(--card);border-radius:6px;padding:6px 8px;margin-bottom:4px;cursor:pointer" onclick="showPost(\'' + b.id + '\',\'' + p.idx + '\')">';
+                h += '<div style="font-weight:600;font-size:12px">' + p.t + '</div>';
+                h += '<div style="font-size:10px;color:var(--t3)">' + p.u + ' · ' + (p.r ? p.r.length + '回复' : '0回复') + '</div></div>';
+            }
+        }
+        h += '<button class="bs bo" style="width:100%;padding:5px;margin-top:6px;font-size:11px" onclick="showStrategyCommunity()">‹ 返回板块列表</button></div>';
+        d.innerHTML = h;
+    };
+    
+    window.newPost = function(boardId) {
+        if (!CUR) { toast("请先登录"); return; }
+        var inp = document.getElementById("npT");
+        if (!inp || !inp.value.trim()) { toast("请输入标题"); return; }
+        var posts = JSON.parse(localStorage.getItem("yb_posts_" + boardId) || "[]");
+        var idx = Date.now().toString();
+        posts.push({idx:idx, t:inp.value.trim(), u:CUR.u, c:"", r:[], ti:Date.now()});
+        localStorage.setItem("yb_posts_" + boardId, JSON.stringify(posts));
+        // Update post count
+        for (var i = 0; i < boards.length; i++) { if (boards[i].id === boardId) { boards[i].p = posts.length; break; } }
+        localStorage.setItem("yb_boards", JSON.stringify(boards));
+        inp.value = "";
+        toast("发帖成功");
+        showBoard(boardId);
+    };
+    
+    window.showPost = function(boardId, postIdx) {
+        var posts = JSON.parse(localStorage.getItem("yb_posts_" + boardId) || "[]");
+        var p = null;
+        for (var i = 0; i < posts.length; i++) { if (posts[i].idx === postIdx) { p = posts[i]; break; } }
+        if (!p) return;
+        var replies = p.r || [];
+        
+        var h = '<div class="mx" style="max-width:420px"><h3>' + p.t + '</h3>';
+        h += '<div style="font-size:10px;color:var(--t3);margin-bottom:6px">楼主: ' + p.u + ' · ' + new Date(p.ti).toLocaleString() + '</div>';
+        if (p.c) h += '<div style="font-size:12px;padding:6px 8px;background:var(--bg);border-radius:6px;margin-bottom:6px">' + p.c + '</div>';
+        h += '<div class="st" style="font-size:11px">全部回复 (' + replies.length + ')</div>';
+        if (replies.length === 0) {
+            h += '<div style="text-align:center;padding:10px;font-size:11px;color:var(--t3)">暂无回复</div>';
+        } else {
+            for (var i = replies.length - 1; i >= 0; i--) {
+                var r = replies[i];
+                h += '<div style="padding:4px 0;border-bottom:1px solid var(--bd);font-size:11px">';
+                h += '<span style="font-weight:600">' + r.u + '</span>: ' + r.c + '</div>';
+            }
+        }
+        if (CUR) {
+            h += '<div style="display:flex;gap:4px;margin-top:6px"><input id="rpC" placeholder="回复..." style="flex:1;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:11px;outline:none">';
+            h += '<button class="bs bp" style="font-size:10px;padding:4px 8px" onclick="postReply(\'' + boardId + '\',\'' + postIdx + '\')">发送</button></div>';
+        }
+        h += '<button class="bs bo" style="width:100%;padding:5px;margin-top:6px;font-size:11px" onclick="showBoard(\'' + boardId + '\')">‹ 返回列表</button></div>';
+        d.innerHTML = h;
+    };
+    
+    window.postReply = function(boardId, postIdx) {
+        var inp = document.getElementById("rpC");
+        if (!inp || !inp.value.trim()) { toast("请输入内容"); return; }
+        var posts = JSON.parse(localStorage.getItem("yb_posts_" + boardId) || "[]");
+        for (var i = 0; i < posts.length; i++) {
+            if (posts[i].idx === postIdx) {
+                posts[i].r = posts[i].r || [];
+                posts[i].r.push({u:CUR.u, c:inp.value.trim(), ti:Date.now()});
+                break;
+            }
+        }
+        localStorage.setItem("yb_posts_" + boardId, JSON.stringify(posts));
+        inp.value = "";
+        toast("回复成功");
+        showPost(boardId, postIdx);
+    };
+    
+    window.applyBarOwner = function(boardId) {
+        if (!CUR) { toast("请先登录"); return; }
+        var apps = JSON.parse(localStorage.getItem("yb_bar_apps") || "[]");
+        for (var i = 0; i < apps.length; i++) {
+            if (apps[i].bId === boardId && apps[i].u === CUR.u) {
+                toast("已申请过吧主，等待审核");
+                return;
+            }
+        }
+        apps.push({bId:boardId, u:CUR.u, ti:Date.now()});
+        localStorage.setItem("yb_bar_apps", JSON.stringify(apps));
+        toast("吧主申请已提交，等待管理员审核");
+    };
+    
+    window.showAdminBarApps = function() {
+        if (!CUR || CUR.r !== "admin") { toast("无权限"); return; }
+        var apps = JSON.parse(localStorage.getItem("yb_bar_apps") || "[]");
+        var accepted = JSON.parse(localStorage.getItem("yb_bar_owners") || "{}");
+        var h = '<div class="mx" style="max-width:420px"><h3>🔐 审核吧主申请</h3>';
+        h += '<div style="font-size:10px;color:var(--t3);margin-bottom:6px">共 ' + apps.length + ' 条待审核</div>';
+        if (apps.length === 0) {
+            h += '<div style="text-align:center;padding:20px;font-size:12px;color:var(--t3)">暂无吧主申请</div>';
+        }
+        for (var i = 0; i < apps.length; i++) {
+            var a = apps[i];
+            var bName = "";
+            for (var j = 0; j < boards.length; j++) { if (boards[j].id === a.bId) { bName = boards[j].n; break; } }
+            h += '<div style="background:var(--bg);border-radius:6px;padding:6px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">';
+            h += '<div><div style="font-size:12px">👑 ' + a.u + ' → ' + bName + '</div></div>';
+            h += '<div style="display:flex;gap:4px"><button class="bs bp" style="font-size:10px;padding:3px 6px" onclick="approveBarOwner(\'' + a.bId + '\',\'' + a.u + '\')">通过</button>';
+            h += '<button class="bs bo" style="font-size:10px;padding:3px 6px" onclick="rejectBarOwner(\'' + a.u + '\')">拒绝</button></div></div>';
+        }
+        h += '<button class="bs bo" style="width:100%;padding:5px;margin-top:6px;font-size:11px" onclick="showMainPage()">‹ 返回</button></div>';
+        d.innerHTML = h;
+    };
+    
+    window.approveBarOwner = function(boardId, user) {
+        var apps = JSON.parse(localStorage.getItem("yb_bar_apps") || "[]");
+        var owners = JSON.parse(localStorage.getItem("yb_bar_owners") || "{}");
+        owners[boardId] = user;
+        localStorage.setItem("yb_bar_owners", JSON.stringify(owners));
+        apps = apps.filter(function(a) { return !(a.bId === boardId && a.u === user); });
+        localStorage.setItem("yb_bar_apps", JSON.stringify(apps));
+        toast("已任命 " + user + " 为吧主");
+        showAdminBarApps();
+    };
+    
+    window.rejectBarOwner = function(user) {
+        var apps = JSON.parse(localStorage.getItem("yb_bar_apps") || "[]");
+        apps = apps.filter(function(a) { return a.u !== user; });
+        localStorage.setItem("yb_bar_apps", JSON.stringify(apps));
+        toast("已拒绝 " + user + " 的吧主申请");
+        showAdminBarApps();
+    };
+    
+    showMainPage();
+}function renderAll() {
     VIP = isVIP();
     renderXuangu();
     renderYujing();
@@ -594,7 +1293,6 @@ function renderAll() {
 
 function renderXuangu() {
     var h = '';
-    h += '<div class="ds"><button class="db' + (SIM ? " ac" : "") + '" onclick="switchSim(1)">📊 模拟</button><button class="db' + (SIM ? "" : " ac") + '" onclick="switchSim(0)">📡 实时</button></div>';
     h += '<div class="st">📋 今日AI精选 <span class="mo" onclick="showReview()">复盘 ›</span></div>';
     h += '<div class="fl"><span class="fb ac" onclick="setFilter(\'all\',this)">全部</span><span class="fb" onclick="setFilter(\'strong\',this)">🔥 强烈推荐</span><span class="fb" onclick="setFilter(\'watch\',this)">💛 关注</span><span class="fb" onclick="setFilter(\'observe\',this)">💚 观察</span></div>';
     
@@ -623,8 +1321,8 @@ function renderXuangu() {
     
     if (!isVIP()) {
         h += '<div style="text-align:center;padding:10px;background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border-radius:10px;margin:8px 0">';
-        h += '<div style="font-size:12px;font-weight:600">🔒 更多精选仅限会员</div>';
-        h += '<button class="bs bg" style="margin-top:4px" onclick="showVIP()">开通会员</button></div>';
+        h += '<div style="font-size:12px;font-weight:600">🔒 更多精选仅限用户</div>';
+        h += '<button class="bs bg" style="margin-top:4px" onclick="showVIP()">开通用户</button></div>';
     }
     
     $("c0").innerHTML = h;
@@ -639,13 +1337,7 @@ function setFilter(v, el) {
     renderXuangu();
 }
 
-function switchSim(v) {
-    SIM = v === 1;
-    localStorage.setItem("ys", SIM ? "" : "f");
-    toast("已切换" + (SIM ? "模拟" : "实时") + "模式");
-    renderAll();
-    updateUI();
-}
+
 
 function renderYujing() {
     var h = '<div class="st">⚡ 实时预警 <span class="mo">今日 ' + ALERTS.length + ' 条</span></div>';
@@ -793,42 +1485,75 @@ function ask(q) {
         renderChat();
     }, 600 + Math.random() * 900);
 }
+function sendQ() {
+    var inp = $("qai");
+    if (!inp || !inp.value.trim()) { toast("请输入问题"); return; }
+    if (!CUR) { toast("请先登录"); return; }
+    ask(inp.value.trim());
+    inp.value = "";
+}
+
+
 function renderZixuan() {
     if (W.length === 0) {
-        $("c3").innerHTML = '<div style="text-align:center;padding:40px 20px"><div style="font-size:40px">⭐</div><div style="font-size:15px;font-weight:600;margin:8px 0">还没有自选股</div><div style="font-size:12px;color:var(--t3)">在"选股"或"预警"中点击"加自选"</div></div>';
+        $("c3").innerHTML = '<div style="text-align:center;padding:40px 20px"><div style="font-size:40px">\u2b50</div><div style="font-size:15px;font-weight:600;margin:8px 0">\u8fd8\u6ca1\u6709\u81ea\u9009\u80a1</div><div style="font-size:12px;color:var(--t3)">\u5728\u201c\u9009\u80a1\u201d\u6216\u201c\u9884\u8b66\u201d\u4e2d\u70b9\u51fb\u201c\u52a0\u81ea\u9009\u201d</div></div>';
         return;
     }
+    if (!window.ZX) window.ZX = {};
     var list = [];
     for (var i = 0; i < W.length; i++) {
         for (var j = 0; j < STOCKS.length; j++) {
             if (STOCKS[j].c === W[i]) { list.push(STOCKS[j]); break; }
         }
     }
-    var h = '<div class="st">⭐ 我的自选 <span class="mo">' + list.length + ' 只</span></div>';
+    var h = '<div class="st">\u2b50 \u6211\u7684\u81ea\u9009 <span class="mo">' + list.length + ' \u53ea</span></div>';
     for (var i = 0; i < list.length; i++) {
         var x = list[i];
-        h += '<div class="wi"><div style="flex:1"><span class="wn">' + x.n + '<span style="font-size:10px;color:var(--t3);margin-left:4px">' + x.c + '</span></span></div>';
-        h += '<div style="text-align:right"><div class="wp">' + x.p.toFixed(2) + '</div><div style="font-size:10px;color:' + pCol(x.ch) + '">' + fmtPct(x.ch) + '</div></div>';
-        h += '<button style="margin-left:6px;background:none;border:none;font-size:16px;cursor:pointer;color:var(--t3)" onclick="toggleWatch(\'' + x.c + '\')">✕</button></div>';
+        var code = x.c;
+        var isOpen = ZX[code] === true;
+        var tagColor = x.l === "strong" ? "var(--red)" : (x.l === "watch" ? "var(--orange)" : "var(--blue)");
+        var tagName = x.l === "strong" ? "\u5f3a\u70c8\u63a8\u8350" : (x.l === "watch" ? "\u503c\u5f97\u5173\u6ce8" : "\u89c2\u5bdf");
+        var pctStr = x.ch >= 0 ? "+" + x.ch.toFixed(2) + "%" : x.ch.toFixed(2) + "%";
+        var agentScore = x.l === "strong" ? Math.round(85 + Math.random() * 14) : (x.l === "watch" ? Math.round(72 + Math.random() * 12) : Math.round(60 + Math.random() * 12));
+        var recBadge = agentScore >= 85 ? "\ud83d\udfe2" : (agentScore >= 70 ? "\ud83d\udfe1" : "\ud83d\udfe0");
+        h += '<div class="wi" style="cursor:pointer" onclick="toggleZX(this.dataset.c)" data-c="' + code + '">';
+        h += '<div style="flex:1"><span class="wn">' + x.n + '<span style="font-size:10px;color:var(--t3);margin-left:4px">' + x.c + '</span></span>';
+        h += ' <span style="font-size:9px;background:' + tagColor + ';color:#fff;padding:1px 4px;border-radius:3px">' + tagName + '</span></div>';
+        h += '<div style="text-align:right"><div class="wp">' + x.p.toFixed(2) + '</div><div style="font-size:10px;color:' + pCol(x.ch) + '">' + pctStr + '</div></div>';
+        h += '<span style="margin-left:6px;font-size:12px;color:var(--t3)">' + (isOpen ? "\u25b2" : "\u25bc") + '</span></div>';
+        if (isOpen) {
+            h += '<div style="background:var(--card);border-radius:0 0 8px 8px;padding:8px 10px;margin:-5px 0 8px;border-left:2px solid ' + tagColor + ';font-size:11px">';
+            h += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>\ud83d\udcca <b>Agent\u8bc4\u5206</b>: ' + recBadge + ' ' + agentScore + '/100</span><span>' + x.se + '</span></div>';
+            h += '<div style="padding:4px 6px;background:var(--bg);border-radius:4px;margin-bottom:4px;line-height:1.5">';
+            h += '\ud83d\udccc ' + x.rs + '</div>';
+            h += '<div style="display:flex;gap:8px;flex-wrap:wrap;color:var(--t3)">';
+            if (x.f) h += '<span>\ud83d\udcb0 ' + x.f + '</span>';
+            if (x.v) h += '<span>\ud83d\udcca ' + x.v + '</span>';
+            h += '<span>\ud83d\udccf ' + (x.z || "-") + '</span>';
+            h += '</div></div>';
+        }
     }
     $("c3").innerHTML = h;
 }
-
+function toggleZX(code) {
+    if (!window.ZX) window.ZX = {};
+    ZX[code] = ZX[code] ? false : true;
+    renderZixuan();
+}
 function renderProfile() {
-    var h = '<div class="pc"><div class="pa">' + (CUR ? "👤" : "🔑") + '</div><div class="pi"><h3>' + (CUR ? CUR.u : "未登录") + '</h3><p>' + (CUR ? (CUR.r === "admin" ? "🔐 管理员" : (isVIP() ? "🌟 会员" : "📱 免费用户")) : "登录后可同步自选股") + '</p></div></div>';
-    h += '<div class="st">数据</div><div class="mi" onclick="toggleDS()"><span style="font-size:16px;margin-right:8px">📊</span><span style="flex:1;font-size:13px">数据来源：' + (SIM ? "模拟数据" : "实时行情") + '</span><span style="color:var(--t3)">切换 ›</span></div>';
-    h += '<div class="st">账户</div>';
+    var h = '<div class="pc"><div class="pa">' + (CUR ? "👤" : "🔑") + '</div><div class="pi"><h3>' + (CUR ? CUR.u : "未登录") + '</h3><p>' + (CUR ? (CUR.r === "admin" ? "🔐 管理员" : "📱 免费用户") : "登录后可同步自选股") + '</p></div></div>';
+h += '<div class="st">账户</div>';
     if (CUR) {
         h += '<div class="mi" onclick="logout()"><span style="font-size:16px;margin-right:8px">🚪</span><span style="flex:1;font-size:13px">退出登录</span><span style="color:var(--t3)">›</span></div>';
     } else {
         h += '<div class="mi" onclick="showLogin()"><span style="font-size:16px;margin-right:8px">🔑</span><span style="flex:1;font-size:13px">登录/注册</span><span style="color:var(--t3)">›</span></div>';
     }
-    h += '<div class="mi" onclick="showVIP()"><span style="font-size:16px;margin-right:8px">👑</span><span style="flex:1;font-size:13px">会员中心</span><span style="color:var(--t3)">' + (CUR && CUR.r === "admin" ? "管理 ›" : (isVIP() ? "已开通 ›" : (CUR ? "申请 ›" : "了解 ›"))) + '</span></div>';
+    
     h += '<div class="st">工具</div><div class="mi" onclick="showReview()"><span style="font-size:16px;margin-right:8px">📊</span><span style="flex:1;font-size:13px">今日复盘报告</span><span style="color:var(--t3)">›</span></div>';
-    h += '<div class="mi" onclick="toast(\'即将上线\')"><span style="font-size:16px;margin-right:8px">📅</span><span style="flex:1;font-size:13px">月度投资报告</span><span style="color:var(--t3)">›</span></div>';
-    h += '<div class="mi" onclick="toast(\'即将上线\')"><span style="font-size:16px;margin-right:8px">📢</span><span style="flex:1;font-size:13px">策略分享社区</span><span style="color:var(--t3)">›</span></div>';
+    h += '<div class="mi" onclick="showMonthlyReport()"><span style="font-size:16px;margin-right:8px">📅</span><span style="flex:1;font-size:13px">月度投资报告</span><span style="color:var(--t3)">›</span></div>';
+    h += '<div class="mi" onclick="showStrategyCommunity()"><span style="font-size:16px;margin-right:8px">📢</span><span style="flex:1;font-size:13px">策略分享社区</span><span style="color:var(--t3)">›</span></div>';
     if (CUR && CUR.r === "admin") {
-        h += '<div class="st">管理</div><div class="mi" onclick="showAdminPanel()"><span style="font-size:16px;margin-right:8px">🔐</span><span style="flex:1;font-size:13px">管理员后台</span><span style="color:var(--t3)">审核会员 ›</span></div>';
+        h += '<div class="st">管理</div><div class="mi" onclick="showAdminPanel()"><span style="font-size:16px;margin-right:8px">🔐</span><span style="flex:1;font-size:13px">管理员后台</span><span style="color:var(--t3)">管理 ›</span></div>';
     }
     h += '<div class="cr">易起来 v1.3.0<br>AI分析仅供参考，不构成投资建议<br>投资有风险，入市需谨慎</div>';
     $("c4").innerHTML = h;
