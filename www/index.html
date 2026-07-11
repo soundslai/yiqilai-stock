@@ -394,7 +394,7 @@ function drawKL(canvasId, data) {
     var cv = document.getElementById(canvasId);
     if (!cv || data.length < 2) return;
     var ctx = cv.getContext("2d");
-    var W = cv.parentElement.clientWidth - 20 || 340;
+    var W = Math.max(cv.parentElement.clientWidth - 20, 200) || 340;
     var H = 200;
     cv.width = W * 2;
     cv.height = H * 2;
@@ -580,7 +580,7 @@ function showDetail(code) {
         if (vc) {
             var vctx = vc.getContext("2d");
             if (vctx) {
-                var vw = vc.parentElement.clientWidth - 20 || 300;
+                var vw = Math.max(vc.parentElement.clientWidth - 20, 100) || 300;
                 if (vw < 100) vw = 300;
                 vc.width = vw * 2;
                 vc.height = 50 * 2;
@@ -600,7 +600,7 @@ function showDetail(code) {
                     var vu = vd[vi].c >= vd[vi].o;
                     var vh3 = (vd[vi].v / vm) * 40;
                     vctx.fillStyle = vu ? "rgba(229,57,53,0.5)" : "rgba(67,160,71,0.5)";
-                    vctx.fillRect(vx2 - 3, 48 - vh3, 6, Math.max(1, vh3));
+                    vctx.fillRect(vx2 - 3, Math.max(1, 48 - vh3), 6, Math.max(1, Math.min(vh3, 46)));
                 }
             }
         }
@@ -969,7 +969,7 @@ function showStrategyCommunity() {
     document.body.appendChild(d);
     showMainPage();
     
-    window.showMainPage = function showMainPage() {
+    function showMainPage() {
         var h = '<div class="mx" style="max-width:420px"><h3>📢 策略分享社区</h3>';
         h += '<div style="font-size:10px;color:var(--t3);margin-bottom:8px">选择板块进入交流</div>';
         if (isAdmin) {
@@ -1025,6 +1025,7 @@ function showStrategyCommunity() {
         h += '<button class="bs bo" style="width:100%;padding:5px;margin-top:6px;font-size:11px" onclick="showStrategyCommunity()">‹ 返回板块列表</button></div>';
         d.innerHTML = h;
     };
+    window.showMainPage = showMainPage;
     
     window.newPost = function(boardId) {
         if (!CUR) { toast("请先登录"); return; }

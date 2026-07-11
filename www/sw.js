@@ -1,5 +1,5 @@
 ﻿// Service Worker for 易起来AI选股
-const CACHE = "yiqilai-v61";
+const CACHE = "yiqilai-v62";
 const URLS = [
   "index.html",
   "manifest.json",
